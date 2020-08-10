@@ -19,6 +19,7 @@ PC通过USBCAN-UC12可以连接到两个不同的CAN网络，完成数据采集�
 - [用户手册PDF版本](DOC/USBCAN-UC12用户手册_v20.8.4.pdf)
 - [命令手册PDF版本](DOC/VCOMCAN_CmdRef_v20.8.4.pdf)
 - [命令手册在线阅读](DOC/VCOMCAN_CmdRef.md)
+- [速度测试文档PDF版本](DOC/USBCAN-UC12速度测试_v20.8.10.pdf)
 - [固件更新日志](FW/ReleaseNotes.md)
 - [固件下载目录](FW)
 
