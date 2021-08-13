@@ -10,7 +10,7 @@ VCOMCAN是USBCAN-UC12的第二固件，可以提供类似[UARTCAN](https://githu
 
 默认串口参数：`波特率115200、8位数据、1位停止、无校验、无流控`。与UARTCAN不同，VCOMCAN的串口为虚拟串口，实际上波特率不受设定波特率115200的影响，仅受USB接口的速度限制。
 
-本文档基于VCOMCAN固件v20.8.4，其余固件版本仅供参考。
+本文档基于VCOMCAN固件v21.8.13，其余固件版本仅供参考。
 
 ## can
 
@@ -18,28 +18,28 @@ VCOMCAN是USBCAN-UC12的第二固件，可以提供类似[UARTCAN](https://githu
 
 命令格式：`can [baud|mode|speed|clear] CAN port setup.`
 
-不带参数的can命令显示当前CAN接口参数和状态。包括命令帮助、波特率、CAN模式、收发帧计数。
+不带参数的can命令显示当前CAN接口参数和状态。包括命令帮助、波特率，FD数据波特率、CAN模式、收发帧计数。
 
 ```
 env ch 0
  CH=0
 can
 can [baud|mode|speed|clear] CAN port setup.
- CH0 BAUD=1000k MODE=0 Normal
+ CH0 BAUD=500k FDBAUD=2M FDEN=1 MODE=0 Normal
  RX0 OK=0 LOST=0
  TX0 OK=0 LOST=0
 env ch 1
  CH=1
 can
 can [baud|mode|speed|clear] CAN port setup.
- CH1 BAUD=1000k MODE=0 Normal
+ CH1 BAUD=500k FDBAUD=2M FDEN=1 MODE=0 Normal
  RX1 OK=0 LOST=0
  TX1 OK=0 LOST=0
 ```
 
 ### can baud
 
-查看、设置CAN接口波特率。波特率单位为kbps，支持波特率范围：1000kbps-40kbps。
+查看、设置CAN接口波特率。波特率单位为kbps，支持波特率范围：1000kbps-40kbps。FD数据波特率单位Mbps，范围：1Mbps~6Mbps。
 
 以CAN1为例举例如下：
 
@@ -48,12 +48,21 @@ env ch 1
  CH=1
 can baud
  can baud [baud in kbps] set CAN baudrate.
- CH1 BAUD=1000k
-can baud 800
- CH1 BAUD=800k
+ CH1 BAUD=500k FDBAUD=1M
+can baud 1000
+ CH1 BAUD=1000k FDBAUD=1M
+can baud 2
+ CH1 BAUD=1000k FDBAUD=2M
+can
+can [baud|mode|speed|clear] CAN port setup.
+ CH1 BAUD=1000k FDBAUD=2M FDEN=1 MODE=0 Normal
+ RX1 OK=0 LOST=0
+ TX1 OK=0 LOST=0
 ```
 
 CAN接口目前支持的波特率为：`1000、900、800、666、600、500、400、300、250、200、150、125、100、90、80、60、50、40(kbps)`
+
+FD数据波特率设置范围为`1-6`，表示1Mbps~6Mbps。实际数据波特率还会受CAN总线收发器限制。
 
 波特率设置完成立即生效，保存参数需要使用`param save`命令。
 
@@ -135,23 +144,35 @@ can clear
 
 命令格式：`std [hexID] [hexDATA|remote] Send standard data/remote message.`
 
-以CAN0为例举例如下：
+以CAN0和CAN1自收自发为例：
 
 ```
 std 44 12345678
- TX0:00000000 DATA MSG ID=0x0044 DATA=12 34 56 78
+ TX0:00000000 DATA MSG ID=0x0044 LEN=4 DATA=12 34 56 78
+ RX1:00000000 DATA MSG ID=0x0044 LEN=4 DATA=12 34 56 78
 std 44 remote
  TX0:00000001 REMOTE MSG ID=0x0044
+ RX1:00000001 REMOTE MSG ID=0x0044
 std 33 0011223344556677
- TX0:00000002 DATA MSG ID=0x0033 DATA=00 11 22 33 44 55 66 77
+ TX0:00000002 DATA MSG ID=0x0033 LEN=8 DATA=00 11 22 33 44 55 66 77
+ RX1:00000002 DATA MSG ID=0x0033 LEN=8 DATA=00 11 22 33 44 55 66 77
+env txfd 1
+ TXFD=1
+std 55 112233445566778899AA
+ TX0:00000003 DATA MSG ID=0x0055 LEN=12 DATA=
+ 11 22 33 44 55 66 77 88 99 AA 00 00
+ RX1:00000003 DATA MSG ID=0x0055 LEN=12 DATA=
+ 11 22 33 44 55 66 77 88 99 AA 00 00
 ```
 
 可以带两个参数：
 
 - 第一个参数为帧 ID，16位，hex表示。
 - 第二个参数如果为`remote`表示远程帧，如果为hex字符串，表示实际数据，最大8个字节。
+- 常规帧数据和帧ID同行显示，FD帧数据会换行显示。
 - 环境变量`CH`控制发送使用的CAN通道。
 - 环境变量`SHOW`控制是否显示发送数据。
+- 环境变量`TXFD`控制是否发送FD帧。
 - 环境变量`CNT`控制发送数量。
 - 环境变量`PRD`控制发送周期。
 - 环境变量`ADD`控制重复发送时帧ID是否自增。
@@ -166,19 +187,33 @@ std 33 0011223344556677
 
 ```
 ext 44 12345678
- TX1:00000000 DATA MSG ID=0x00000044 DATA=12 34 56 78
+ TX1:00000000 DATA MSG ID=0x00000044 LEN=4 DATA=12 34 56 78
+ RX0:00000000 DATA MSG ID=0x00000044 LEN=4 DATA=12 34 56 78
 ext 44 remote
  TX1:00000001 REMOTE MSG ID=0x00000044
+ RX0:00000001 REMOTE MSG ID=0x00000044
 ext 33 001122334455667788
- TX1:00000002 DATA MSG ID=0x00000033 DATA=00 11 22 33 44 55 66 77
+ TX1:00000002 DATA MSG ID=0x00000033 LEN=8 DATA=00 11 22 33 44 55 66 77
+ RX0:00000002 DATA MSG ID=0x00000033 LEN=8 DATA=00 11 22 33 44 55 66 77
+env txfd 1
+ TXFD=1
+ext 55 112233445566778899112233445566778899112233445566
+ TX1:00000004 DATA MSG ID=0x00000055 LEN=24 DATA=
+ 11 22 33 44 55 66 77 88 99 11 22 33 44 55 66 77
+ 88 99 11 22 33 44 55 66
+ RX0:00000004 DATA MSG ID=0x00000055 LEN=24 DATA=
+ 11 22 33 44 55 66 77 88 99 11 22 33 44 55 66 77
+ 88 99 11 22 33 44 55 66
 ```
 
 可以带两个参数：
 
 - 第一个参数为帧 ID，32位，hex表示。
 - 第二个参数如果为`remote`表示远程帧，如果为hex字符串，表示实际数据，最大8个字节。
+- 常规帧数据和帧ID同行显示，FD帧数据会换行显示。
 - 环境变量`CH`控制发送使用的CAN通道。
 - 环境变量`SHOW`控制是否显示发送数据。
+- 环境变量`TXFD`控制是否发送FD帧。
 - 环境变量`CNT`控制发送数量。
 - 环境变量`PRD`控制发送周期。
 - 环境变量`ADD`控制重复发送时帧ID是否自增。
@@ -187,14 +222,14 @@ ext 33 001122334455667788
 
 查看、设置环境变量：
 
-命令格式：`env [ch|show|add|cnt|prd] Set/Show environment variables.`
+命令格式：`env [ch|show|add|txfd|cnt|prd] Set/Show environment variables.`
 
 不带参数的`env`命令显示当前所有环境变量：
 
 ```
 env
-env [ch|show|add|cnt|prd] Set/Show environment variables.
- CH=0 SHOW=1 ADD=0 SINGLE=0 CNT=1 PRD=0us
+env [ch|show|add|txfd|cnt|prd] Set/Show environment variables.
+ CH=0 SHOW=1 ADD=0 SINGLE=0 TXFD=0 BRS=1 CNT=1 PRD=0us
 ```
 
 带一个参数的`env`命令查看需要的环境变量：
@@ -231,6 +266,8 @@ CH1 PRD=200us
 | SHOW   | 是否显示收发数据        | 0:不显示 1:显示 按ctrl+p切换  |
 | ADD    | 发送时帧ID是否自增      | 0:不自增 1:自增               |
 | SINGLE | 是否自动重传            | 0:不重传，1:重传              |
+| TXFD   | 是否发送FD帧            | 0:常规帧，1:FD帧              |
+| BRS    | 是否切换FD数据波特率    | 0:不切换，1:切换              |
 | CNT    | 发送数据帧数量          | 大于0的整数                   |
 | PRD    | 发送周期                | 单位us                        |
 
@@ -240,6 +277,7 @@ CH1 PRD=200us
 - 连续接收数据时可以按下ctrl+p来切换是否显示数据，即改变SHOW环境变量。
 - 设置SHOW=0关闭显示数据可以达到最大的CAN收发速度。
 - 设置SINGLE=1可以防止CANH和CANL悬空时发送报错。
+- TXFD控制发送常规帧还是FD帧，接收自动处理，不受TXFD控制。
 - 发送周期设置为0以最大速度发送。
 
 按下`ctrl+p`组合键，可暂停CAN帧接收显示，再次按下`ctrl+p`继续显示接收到的数据包。
@@ -448,7 +486,7 @@ help
  can -> can [baud|mode|speed|clear] CAN port setup.
  std -> std [hexID] [hexDATA|remote] Send standard data/remote message.
  ext -> ext [hexID] [hexDATA|remote] Send extended data/remote message.
- env -> env [ch|show|add|cnt|prd] Set/Show environment variables.
+ env -> env [ch|show|add|txfd|cnt|prd] Set/Show environment variables.
  uart -> uart [baud|mode|addr] UART port setup.
  filter -> filter [0-7] [mode|scale|act|r0|r1] [param] CAN filter setup.
  param -> param [load|save|restore] Operate parameters.
@@ -465,6 +503,6 @@ help
 
 ```
 version
- VCOMCAN v20.8.4 SN:653D385347410F3148544237
+ VCOMCAN v21.8.13 SN:3A103153514A095248544437
  ECHO Studio <echo.xjtu@gmail.com>. All Rights Reserved.
 ```
