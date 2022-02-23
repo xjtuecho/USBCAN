@@ -5,6 +5,8 @@
 - USBCAN固件，完全兼容ZLG的USBCAN-II，上位机软件使用CANTest，使用简单。
 - VCOMCAN固件，使用虚拟串口命令行，支持CANFD，上位机使用`超级终端`,`Putty`等终端软件，功能更强大，使用略复杂。
 
+此外还有PCAN固件可用，可以满足日常简单使用，由于测试尚不充分，还没有正式发布。
+
 # USBCAN-UC12固件更新方法
 
 - 首先安装虚拟串口驱动`USB Virtual Com Port Driver.exe`，x64目录对应64位系统，x86目录对应32位系统
